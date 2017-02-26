@@ -1,0 +1,134 @@
+# ---------------------------------------------------------------------
+# Packer configuration file, needs to be converted to JSON first
+# See:
+#   - https://github.com/mitchellh/packer/issues/1768
+#   - https://github.com/mitchellh/packer/pull/2230
+#   - https://github.com/mitchellh/packer/pull/4461
+# ---------------------------------------------------------------------
+
+---
+variables:
+  # Credentials to log into the generated VM
+
+  username: vagrant
+  password: vagrant
+
+  # Environment variables are not accessible in other sections,
+  # so they are saved to local variables here for later use
+
+  vm:           '{{env `BOX_TO_BUILD`}}'
+  iso_url:      '{{env `BOX_ISO_URL`}}'
+  iso_checksum: '{{env `BOX_ISO_CHECKSUM`}}'
+
+  # We don't use the proxy from the host environment, but the one defined in
+  # the build script. This gives us more flexibility guarantees reproducible builds
+
+  yum_repo:     '{{env `BOX_YUM_REPO`}}'
+  http_proxy:   '{{env `BOX_PROXY`}}'
+  no_proxy:     '{{env `BOX_NO_PROXY`}}'
+  dns1:         '{{env `BOX_DNS1`}}'
+  dns2:         '{{env `BOX_DNS2`}}'
+
+builders:
+- type: vmware-iso
+  vm_name: '{{ user `vm` }}'
+  ssh_username: '{{user `username`}}'
+  ssh_password: '{{user `password`}}'
+
+  # boot and shutdown behaviour during the installation
+
+  boot_command:
+  - <tab> text ks=http://{{ .HTTPIP }}:{{ .HTTPPort }}/ks.cfg<enter>
+  http_directory: ../{{ user `vm` }}
+  boot_wait: 5s
+  shutdown_command: echo '{{user `password`}}' | sudo -S /sbin/halt -h -p
+  keep_registered: true
+
+  # set headless=false to follow installation progress in VMware console
+
+  headless: true
+  ssh_pty: true
+
+  # settings related to the Linux ISO you're installing
+
+  iso_url: '{{ user `iso_url` }}'
+  iso_checksum: '{{ user `iso_checksum` }}'
+  iso_checksum_type: sha256
+  guest_os_type: rhel7-64
+
+  # settings for the VMware virtual machine before installation starts
+  # CPU=1 socket with 2 cores, virtualhw=12 means VMware Workstation 12.5.2
+
+  vmx_data:
+    displayname: '{{ user `vm` }}'
+    numvcpus: 2
+    cpuid.coresPerSocket: 2
+    ehci.present: false
+#    guestos: rhel7-64
+    memsize: 2048
+    virtualhw.version: 12
+
+  # settings for the virtual machine after the installation is finished
+  # mostly bridged ethernet and activation of shared folders
+
+  vmx_data_post:
+    ethernet0.present: true
+    ethernet0.startConnected: true
+    ethernet0.virtualDev: e1000
+    ethernet0.connectionType: bridged
+
+    vcpu.hotadd: true
+    mem.hotadd: true
+    mks.enable3d: true
+
+    sharedFolder.maxNum: 1
+    sharedFolder0.enabled: true
+    sharedFolder0.expiration: never
+    sharedFolder0.guestName: vagrant
+    sharedFolder0.hostPath: C:\usr\share
+    sharedFolder0.present: true
+    sharedFolder0.readAccess: true
+    sharedFolder0.writeAccess: true
+    isolation.tools.hgfs.disable: false
+
+provisioners:
+# dotfiles
+- type: file
+  destination: /home/{{user `username`}}
+  source: ../files/home/
+
+# SSH configuration (you need to provide your own SSH keys)
+- type: file
+  destination: /home/{{user `username`}}/.ssh
+  source: ../files/home/.ssh/
+
+# Corporate yum repos and additional configuration
+- type: file
+  destination: /tmp/yum.repos.d
+  source: ../files/yum.repos.d
+
+# VMware Tools (the offical ones)
+- type: file
+  destination: /tmp
+  source: ../files/vmtools
+
+# The actual provisionning environment and scripts
+- type: shell
+  execute_command: chmod +x {{ .Path }}; {{ .Vars }} sudo -E '{{ .Path }}'
+  expect_disconnect: true
+  environment_vars:
+  - BOX_YUM_REPO_FROM_ENV={{user `yum_repo`}}
+  - PROXY_FROM_ENV={{user `http_proxy`}}
+  - NO_PROXY_FROM_ENV={{user `no_proxy`}}
+  - DNS1_FROM_ENV={{user `dns1`}}
+  - DNS2_FROM_ENV={{user `dns2`}}
+  scripts:
+  - ../scripts/base/01.corporate.sh
+  - ../scripts/base/02.proxy.sh
+  - ../scripts/base/03.bootstrap.sh
+  - ../scripts/base/05.reboot.sh
+  - ../scripts/base/10.kernel.sh
+  - ../scripts/base/20.update.sh
+  - ../scripts/base/50.vmware.sh
+  - ../scripts/base/80.sshd.sh
+  - ../scripts/base/99.teardown.sh

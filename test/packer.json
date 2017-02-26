@@ -1,0 +1,121 @@
+{
+    "variables": {
+        "_comment1": "#-- Credentials to log into the generated VM:",
+
+        "password":     "vagrant",
+        "username":     "vagrant",
+
+        "_comment2": "#-- Environment variables are not allowed in other sections, so they are remapped here",
+
+        "vm":           "{{env `BOX_TO_BUILD`}}",
+        "iso_url":      "{{env `BOX_ISO_URL`}}",
+        "iso_checksum": "{{env `BOX_ISO_CHECKSUM`}}",
+
+        "_comment3": "#-- We don't use the proxy from the environment but the one defined in the build script",
+        "_comment4": "#-- This gives us more control and makes the build reproducible",
+
+        "yum_repo":     "{{env `BOX_YUM_REPO`}}",
+        "http_proxy":   "{{env `BOX_PROXY`}}",
+        "no_proxy":     "{{env `BOX_NO_PROXY`}}",
+        "dns1":         "{{env `BOX_DNS1`}}",
+        "dns2":         "{{env `BOX_DNS2`}}"
+    },
+
+    "builders" : [
+        {
+            "vm_name": "{{ user `vm` }}",
+
+            "type": "vmware-iso",
+            "guest_os_type": "rhel7-64",
+            "headless": "true",
+
+            "iso_url": "{{ user `iso_url` }}",
+            "iso_checksum": "{{ user `iso_checksum` }}",
+            "iso_checksum_type": "sha256",
+
+            "http_directory": "../{{ user `vm` }}",
+            "boot_command": [
+                "<tab> text ks=http://{{ .HTTPIP }}:{{ .HTTPPort }}/ks.cfg<enter>"
+            ],
+            "boot_wait": "5s",
+            "vmx_data": {
+                "displayname": "{{ user `vm` }}",
+                "guestos": "rhel7-64",
+                "virtualhw.version": "12",
+                "memsize": "2048",
+                "numvcpus": "2",
+                "cpuid.coresPerSocket": "2",
+                "ehci.present": "FALSE",
+                "floppy0.present": "FALSE"
+            },
+            "vmx_data_post": {
+                "vcpu.hotadd": "TRUE",
+                "mem.hotadd": "TRUE",
+                "mks.enable3d": "TRUE",
+                "ethernet0.present": "TRUE",
+                "ethernet0.virtualDev": "e1000",
+                "ethernet0.connectionType": "bridged",
+                "ethernet0.startConnected": "TRUE",
+                "isolation.tools.hgfs.disable": "FALSE",
+                "sharedFolder0.present": "TRUE",
+                "sharedFolder0.enabled": "TRUE",
+                "sharedFolder0.readAccess": "TRUE",
+                "sharedFolder0.writeAccess": "TRUE",
+                "sharedFolder0.hostPath": "C:\\usr\\share",
+                "sharedFolder0.guestName": "vagrant",
+                "sharedFolder0.expiration": "never",
+                "sharedFolder.maxNum": "1"
+            },
+            "ssh_username": "{{user `username`}}",
+            "ssh_password": "{{user `password`}}",
+            "shutdown_command": "echo '{{user `password`}}' | sudo -S /sbin/halt -h -p",
+            "ssh_pty": "true",
+            "keep_registered": "true"
+        }
+    ],
+    "provisioners": [
+        {
+            "type": "file",
+            "source": "../files/home/",
+            "destination": "/home/{{user `username`}}"
+        },
+        {
+            "type": "file",
+            "source": "../files/home/.ssh/",
+            "destination": "/home/{{user `username`}}/.ssh"
+        },
+        {
+            "type": "file",
+            "source": "../files/yum.repos.d",
+            "destination": "/tmp/yum.repos.d"
+        },
+        {
+            "type": "file",
+            "source": "../files/vmtools",
+            "destination": "/tmp"
+        },
+        {
+            "type": "shell",
+            "execute_command": "chmod +x {{ .Path }}; {{ .Vars }} sudo -E '{{ .Path }}'",
+            "expect_disconnect": "true",
+            "environment_vars": [
+                "BOX_YUM_REPO_FROM_ENV={{user `yum_repo`}}",
+                "PROXY_FROM_ENV={{user `http_proxy`}}",
+                "NO_PROXY_FROM_ENV={{user `no_proxy`}}",
+                "DNS1_FROM_ENV={{user `dns1`}}",
+                "DNS2_FROM_ENV={{user `dns2`}}"
+            ],
+            "scripts": [
+                "../scripts/base/01.corporate.sh",
+                "../scripts/base/02.proxy.sh",
+                "../scripts/base/03.bootstrap.sh",
+                "../scripts/base/05.reboot.sh",
+                "../scripts/base/10.kernel.sh",
+                "../scripts/base/20.update.sh",
+                "../scripts/base/50.vmware.sh",
+                "../scripts/base/80.sshd.sh",
+                "../scripts/base/99.teardown.sh"
+            ]
+        }
+    ]
+}
