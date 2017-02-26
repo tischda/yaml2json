@@ -16,7 +16,6 @@ init:
 install:
   - go version
   - go env
-  - mkdir %GOPATH%
   - go get github.com/tischda/go2xunit
   - go get github.com/kardianos/govendor
   - govendor sync
