@@ -31,6 +31,8 @@ make dist
 Usage: yaml2json.exe [option] filename
 
  OPTIONS:
+  -indent
+        indent JSON (default true)
   -revert
         transform JSON back to YAML
   -version
@@ -45,5 +47,8 @@ name: John
 age: 30
 
 # yaml2json.exe test\simple.yaml
-{"age":30,"name":"John"}
+{
+  "age": 30,
+  "name": "John"
+}
 ~~~

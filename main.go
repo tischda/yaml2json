@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -8,6 +9,8 @@ import (
 	"io/ioutil"
 
 	"os"
+
+	"bytes"
 
 	"github.com/ghodss/yaml"
 )
@@ -18,9 +21,11 @@ var version string
 
 var showVersion bool
 var revert bool
+var indent bool
 
 func init() {
 	flag.BoolVar(&showVersion, "version", false, "print version and exit")
+	flag.BoolVar(&indent, "indent", true, "indent JSON")
 	flag.BoolVar(&revert, "revert", false, "transform JSON back to YAML")
 }
 
@@ -54,6 +59,13 @@ func processFile(name string) (b []byte) {
 	} else {
 		b, err = yaml.YAMLToJSON(in)
 		checkFatal(err)
+		if indent {
+			// wish ghodss/yaml had a pretty print option
+			var prettyJSON bytes.Buffer
+			err = json.Indent(&prettyJSON, b, "", "  ")
+			checkFatal(err)
+			b = prettyJSON.Bytes()
+		}
 	}
 	return
 }
