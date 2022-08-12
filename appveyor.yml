@@ -2,22 +2,20 @@ branches:
   only:
     - master
 
-os: Windows Server 2012 R2
+image: Visual Studio 2019
 
 environment:
-  GOPATH: c:\gopath
-
-clone_folder: c:\gopath\src\github.com\tischda\yaml2json
+  GOPATH: C:\gopath
+  GOPROXY: https://proxy.golang.org  
 
 init:
   - SET PATH=%GOPATH%\bin;%PATH%
-  - git config --global core.autocrlf input
 
 install:
   - go version
   - go env
-  - go get github.com/tischda/go2xunit
-  - go get github.com/kardianos/govendor
+  - go install github.com/tebeka/go2xunit@latest
+  - go install github.com/kardianos/govendor
   - govendor sync
 
 build_script:
