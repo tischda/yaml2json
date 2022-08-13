@@ -1,39 +1,44 @@
-# --------------------------------------------------------------------------
-# Makefile for yaml2json
-# --------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Makefile for CLI utilities
+# 
+# Escape '#' and '[' characters with '\', and '$' characters with '$$'
+# ---------------------------------------------------------------------------
 
-SHELL=/Windows/system32/cmd.exe
-PROJECT_DIR=$(notdir $(shell pwd))
+BUILD_TAG=$(shell git describe --tags 2>/dev/null || echo unreleased)
+LDFLAGS=-ldflags=all="-X main.version=${BUILD_TAG} -s -w"
 
-BUILD_TAG=$(shell git describe --tags)
-LDFLAGS=all=-ldflags "-X main.version=${BUILD_TAG} -s -w"
-
-all: get build
+all: build
 
 build:
-	go build ${LDFLAGS}
+	go build -mod vendor ${LDFLAGS}
 
-get:
-	govendor sync
-
-test: clean vet
-	govendor test -v -cover +local
+test:
+	go test -mod vendor -v -cover
 
 cover:
-	govendor test -coverprofile=coverage.out +local
+	go test -coverprofile=coverage.out
 	go tool cover -html=coverage.out
 
-fmt:
-	govendor fmt +local
-
-vet:
-	govendor vet -v +local
-
 install:
-	go install ${LDFLAGS}
+	go install ${LDFLAGS} ./...
 
-dist: clean build
-	upx -9 ${PROJECT_DIR}.exe
+update:
+	go get -u
+	go mod tidy
+# 	https://github.com/golang/go/issues/45161
+	go mod vendor
+
+snapshot:
+	goreleaser --snapshot --skip-publish --rm-dist
+
+release: 
+	@sed '1,/\#\# \[${BUILD_TAG}/d;/^\#\# /Q' CHANGELOG.md > releaseinfo
+	goreleaser release --rm-dist --release-notes=releaseinfo
+	@rm -f releaseinfo
 
 clean:
 	go clean
+	rm -f releaseinfo
+	rm -rf dist
+
+.PHONY: all test clean

@@ -1,5 +1,9 @@
 ## Changelog
 
+##### yaml2json 1.1.x - (?)
+
+* Use go modules
+
 ##### yaml2json 1.1.0 - (06 March 2017)
 
 * Indent JSON output

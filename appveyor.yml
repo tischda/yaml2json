@@ -15,18 +15,16 @@ install:
   - go version
   - go env
   - go install github.com/tebeka/go2xunit@latest
-  - go install github.com/kardianos/govendor
-  - govendor sync
 
 build_script:
   - for /f "delims=" %%a in ('git describe --tags') do @set version=%%a
   - ps: Update-AppveyorBuild -Version $env:version
-  - go build -ldflags "all=-X main.version=%version% -s -w"
+  - go build -mod vendor -ldflags=all="-X main.version=%version% -s -w"
 
 test_script:
   - yaml2json.exe -version
-  - govendor test -v -cover +local
-  - govendor test -v +local | go2xunit -xunitnet > xunit-report.xml
+  - go test -v -cover
+  - go test -v | go2xunit -xunitnet > xunit-report.xml
 
 artifacts:
   - path: yaml2json.exe
