@@ -1,9 +1,12 @@
-﻿# yaml2json [![Build status](https://ci.appveyor.com/api/projects/status/l3a401e7voipe8sa/branch/master?svg=true)](https://ci.appveyor.com/project/tischda/yaml2json/branch/master)
+﻿[![Build Status](https://github.com/tischda/yaml2json/actions/workflows/build.yml/badge.svg)](https://github.com/tischda/yaml2json/actions/workflows/build.yml)
+[![Test Status](https://github.com/tischda/yaml2json/actions/workflows/test.yml/badge.svg)](https://github.com/tischda/yaml2json/actions/workflows/test.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/tischda/yaml2json)](https://goreportcard.com/report/github.com/tischda/yaml2json)
 
-Small utility written in [Go](https://www.golang.org) to convert Packer configuration files
-written in YAML to the required JSON format.
+# yaml2json
 
-The main reason is that I need to write comments in this configuration file and HCL is not ready yet.
+Converts Packer configuration files written in YAML to the required JSON format.
+
+The main point is to write comments in the configuration file and HCL is not ready yet.
 
 See also:
    * https://github.com/mitchellh/packer/issues/1768
@@ -15,14 +18,7 @@ See also:
 There is a dependency on github.com/ghodss/yaml.
 
 ~~~
-go get github.com/kardianos/govendor
-
-git clone https://github.com/tischda/yaml2json
-
-cd yaml2json
-
-govendor sync
-make dist
+go install github.com/tischda/yaml2json@latest
 ~~~
 
 ### Usage
