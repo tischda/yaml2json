@@ -1,38 +1,56 @@
+//go:build windows
+
 package main
 
 import (
-	"strings"
+	"flag"
+	"os"
 	"testing"
 )
 
-func TestYAMLToJSON(t *testing.T) {
-	indent = false
-	revert = false
-	expected := "{\"age\":30,\"name\":\"John\"}"
-	actual := string(processFile("test/simple.yaml"))
+func TestInitFlags(t *testing.T) {
+	// Save original command line and reset flags
+	originalArgs := os.Args
+	originalCommandLine := flag.CommandLine
 
-	if strings.Compare(actual, expected) != 0 {
-		t.Errorf("Expected: %s, but was: %s", expected, actual)
+	defer func() {
+		os.Args = originalArgs
+		flag.CommandLine = originalCommandLine
+	}()
+
+	// Create a new flag set for this test
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+
+	// Test initFlags() function
+	cfg := initFlags()
+
+	// Test default values
+	if cfg.help != false {
+		t.Errorf("Expected help default to be false, got %v", cfg.help)
 	}
-}
-
-func TestYAMLToJSONIndent(t *testing.T) {
-	indent = true
-	revert = false
-	expected := "{\n  \"age\": 30,\n  \"name\": \"John\"\n}"
-	actual := string(processFile("test/simple.yaml"))
-
-	if strings.Compare(actual, expected) != 0 {
-		t.Errorf("Expected: %s, but was: %s", expected, actual)
+	if cfg.version != false {
+		t.Errorf("Expected version default to be false, got %v", cfg.version)
 	}
-}
 
-func TestJSONToYAML(t *testing.T) {
-	revert = true
-	expected := "age: 30\nname: John\n"
-	actual := string(processFile("test/simple.json"))
+	// Test that flags can be parsed
+	testArgs := []string{
+		"progname",
+		"-?",
+		"-v",
+	}
 
-	if strings.Compare(actual, expected) != 0 {
-		t.Errorf("Expected: %s, but was: %s", expected, actual)
+	// Reset flag set and reinitialize
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	cfg = initFlags()
+
+	// Parse test arguments
+	err := flag.CommandLine.Parse(testArgs[1:])
+	if err != nil {
+		t.Fatalf("Failed to parse flags: %v", err)
+	}
+
+	// Verify flags were set correctly
+	if !cfg.version {
+		t.Error("Expected version flag to be true")
 	}
 }

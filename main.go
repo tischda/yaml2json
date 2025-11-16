@@ -1,77 +1,85 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
 
-	"io/ioutil"
-
 	"os"
-
-	"bytes"
-
-	"github.com/ghodss/yaml"
 )
 
-const name string = "yaml2json"
+// https://goreleaser.com/cookbooks/using-main.version/
+var (
+	name    string
+	version string
+	date    string
+	commit  string
+)
 
-var version string
+// flags
+type Config struct {
+	indent  bool
+	revert  bool
+	help    bool
+	version bool
+}
 
-var showVersion bool
-var revert bool
-var indent bool
-
-func init() {
-	flag.BoolVar(&showVersion, "version", false, "print version and exit")
-	flag.BoolVar(&indent, "indent", true, "indent JSON")
-	flag.BoolVar(&revert, "revert", false, "transform JSON back to YAML")
+func initFlags() *Config {
+	cfg := &Config{}
+	flag.BoolVar(&cfg.indent, "i", true, "")
+	flag.BoolVar(&cfg.indent, "indent", true, "indent JSON")
+	flag.BoolVar(&cfg.revert, "r", false, "")
+	flag.BoolVar(&cfg.revert, "revert", false, "transform JSON back to YAML")
+	flag.BoolVar(&cfg.help, "?", false, "")
+	flag.BoolVar(&cfg.help, "help", false, "displays this help message")
+	flag.BoolVar(&cfg.version, "v", false, "")
+	flag.BoolVar(&cfg.version, "version", false, "print version and exit")
+	return cfg
 }
 
 func main() {
 	log.SetFlags(0)
-	flag.Parse()
+	cfg := initFlags()
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: %s [option] filename\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "\n OPTIONS:\n")
-		flag.PrintDefaults()
-		os.Exit(1)
-	}
+		fmt.Fprintln(os.Stderr, "Usage: "+name+` [OPTIONS] filename
 
-	if flag.Arg(0) == "version" || showVersion {
-		fmt.Printf("%s version %s\n", name, version)
+Converts configuration files written in YAML to JSON format.
+
+OPTIONS:
+  -i, --indent
+        indent JSON output (default: true)
+  -r, --revert
+        transform JSON back to YAML
+  -?, --help
+        display this help message
+  -v, --version
+        print version and exit
+
+EXAMPLES:`)
+
+		fmt.Fprintln(os.Stderr, "\n  $ "+name+` test\simple.yaml
+  {
+    "age": 30,
+    "name": "John"
+  }`)
+	}
+	flag.Parse()
+
+	if flag.Arg(0) == "version" || cfg.version {
+		fmt.Printf("%s %s, built on %s (commit: %s)\n", name, version, date, commit)
 		return
 	}
-	if flag.NArg() != 1 {
+
+	if cfg.help {
 		flag.Usage()
+		return
 	}
-	out := processFile(flag.Arg(0))
+
+	if len(os.Args) < 2 {
+		flag.Usage()
+		os.Exit(1)
+	}
+	filename := flag.Arg(0)
+	out := convert(filename, cfg)
 	fmt.Print(string(out))
-}
-
-func processFile(name string) (b []byte) {
-	in, err := ioutil.ReadFile(name)
-	checkFatal(err)
-	if revert {
-		b, err = yaml.JSONToYAML(in)
-		checkFatal(err)
-	} else {
-		b, err = yaml.YAMLToJSON(in)
-		checkFatal(err)
-		if indent {
-			// wish ghodss/yaml had a pretty print option
-			var prettyJSON bytes.Buffer
-			err = json.Indent(&prettyJSON, b, "", "  ")
-			checkFatal(err)
-			b = prettyJSON.Bytes()
-		}
-	}
-	return
-}
-
-func checkFatal(e error) {
-	if e != nil {
-		log.Fatalln(e)
-	}
 }
